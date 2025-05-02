@@ -2,58 +2,53 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "portfolio-site"
-        CONTAINER_NAME = "portfolio-container"
-        GIT_URL = "https://github.com/mrsumit12/portfolio.git"
-        DOCKER_HUB_REPO = "portfolio-repo"  // Replace with your actual Docker Hub repo name
+        IMAGE_NAME      = 'sumit7372/portfolio'
+        CONTAINER_NAME  = 'portfolio-container'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git url: GIT_URL, branch: 'main'
+                git branch: 'main', url: 'https://github.com/mrsumit12/portfolio.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${DOCKER_HUB_REPO}:${BUILD_NUMBER} ."
+                sh 'docker build -t $IMAGE_NAME .'
             }
         }
 
-        stage('Login to Docker Hub') {
+        stage('Push to DockerHub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                    script {
-                        sh "echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin"
-                    }
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker push $IMAGE_NAME
+                    '''
                 }
             }
         }
 
-        stage('Push to Docker Hub') {
+        stage('Run Docker Container') {
             steps {
-                sh "docker push ${DOCKER_USERNAME}/${DOCKER_HUB_REPO}:${BUILD_NUMBER}"
-            }
-        }
-
-        stage('Deploy Container') {
-            steps {
-                sh """
-                   docker stop ${CONTAINER_NAME} || true
-                   docker rm ${CONTAINER_NAME} || true
-                   docker run -d -p 3000:80 --name ${CONTAINER_NAME} ${DOCKER_USERNAME}/${DOCKER_HUB_REPO}:${BUILD_NUMBER}
-                """
+                sh '''
+                    docker rm -f $CONTAINER_NAME || true
+                    docker run -d -p 3000:80 --name $CONTAINER_NAME $IMAGE_NAME
+                '''
             }
         }
     }
 
     post {
         success {
-            echo "✅ Deployment complete"
+            echo '✅ Deployment successful! The portfolio container is up and running at port 3000.'
         }
         failure {
-            echo "❌ Build or deployment failed."
+            echo '❌ Deployment failed! Check the console output for errors.'
+        }
+        always {
+            echo '📦 CI/CD Pipeline execution completed.'
         }
     }
 }
