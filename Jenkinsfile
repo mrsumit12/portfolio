@@ -34,7 +34,7 @@ pipeline {
             steps {
                 sh '''
                     docker rm -f $CONTAINER_NAME || true
-                    docker run -d --network="host" -p 3000:80 --name $CONTAINER_NAME $IMAGE_NAME
+                    docker run -d --network="host" --name $CONTAINER_NAME $IMAGE_NAME
                 '''
             }
         }
